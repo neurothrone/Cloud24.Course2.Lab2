@@ -1,0 +1,88 @@
+@using BookStore.Persistence.EFCore.Data
+@using BookStore.Persistence.EFCore.Models
+@using Microsoft.EntityFrameworkCore
+
+<SearchInput Placeholder="Search for authors by name"
+             OnSearched="SearchAuthors"/>
+
+@if (_authors.Count > 0)
+{
+    <table class="table mt-3">
+        <thead>
+            <tr>
+                <th class="px-0">ID</th>
+                <th>Full Name</th>
+                <th>Birth Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var author in _authors)
+            {
+                <tr @key="author.Id">
+                    <td class="px-0">@author.Id</td>
+                    <td>@author.FullName</td>
+                    <td>@author.BirthDate.ToString("yyyy-MM-dd")</td>
+                    <td>
+                        @if (SelectedAuthor?.Id == author.Id)
+                        {
+                            <button type="button"
+                                    class="btn btn-primary me-2"
+                                    disabled>
+                                Selected
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button"
+                                    class="btn btn-primary me-2"
+                                    @onclick="() => SelectAuthor(author)">
+                                Select
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    [Parameter]
+    public Author? SelectedAuthor { get; set; }
+
+    [Parameter]
+    public EventCallback<Author> OnAuthorSelected { get; set; }
+
+    [Inject]
+    private IDbContextFactory<BookStoreDbContext> ContextFactory { get; set; } = null!;
+
+    private List<Author> _authors = [];
+
+    private async Task SearchAuthors(string searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            _authors = [];
+            return;
+        }
+
+        var searchPattern = $"%{searchText.Trim()}%";
+
+        await using var context = await ContextFactory.CreateDbContextAsync();
+        _authors = await context.Authors
+            .AsNoTracking()
+            .Where(a => EF.Functions.Like(a.FirstName + " " + a.LastName, searchPattern))
+            .ToListAsync();
+    }
+
+    private async Task SelectAuthor(Author author)
+    {
+        if (OnAuthorSelected.HasDelegate)
+            await OnAuthorSelected.InvokeAsync(author);
+
+        _authors.Clear();
+    }
+
+}

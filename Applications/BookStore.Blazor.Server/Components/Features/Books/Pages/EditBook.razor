@@ -1,0 +1,211 @@
+@page "/books/edit"
+@rendermode InteractiveServer
+
+@using BookStore.Blazor.Server.Components.Features.Books.Controls
+@using BookStore.Persistence.EFCore.Data
+@using BookStore.Persistence.EFCore.Models
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Edit Book</PageTitle>
+<h3>Edit Book</h3>
+
+@if (_errorMessage is not null)
+{
+    <h4>Error: @_errorMessage</h4>
+}
+
+@if (_isBusy || _book is null)
+{
+    <LoadingIndicator/>
+}
+else if (_book is not null)
+{
+    <EditForm Model="_book"
+              OnValidSubmit="UpdateBook">
+
+        <DataAnnotationsValidator/>
+
+        <InputGroup class="mb-3"
+                    Label="ISBN13">
+            <InputControl>
+                <InputText class="form-control"
+                           placeholder="XXX-X-XXX-XXXXX"
+                           disabled
+                           readonly
+                           @bind-Value="_book.Isbn13"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Isbn13"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Title">
+            <InputControl>
+                <InputText class="form-control"
+                           placeholder="Brave New World"
+                           @bind-Value="_book.Title"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Title"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Author">
+            <InputControl>
+                @if (_book.Author is null)
+                {
+                    <SearchAuthorList SelectedAuthor="_book.Author"
+                                      OnAuthorSelected="SelectAuthor"/>
+                }
+                else
+                {
+                    <ReadonlyInput Value="@_book.Author.FullName"/>
+                    <button type="button"
+                            class="btn btn-outline-danger"
+                            @onclick="RemoveAuthor">
+                        Clear
+                    </button>
+                }
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Author"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Language">
+            <InputControl>
+                <InputText class="form-control"
+                           placeholder="English"
+                           @bind-Value="_book.Language"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Language"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Price">
+            <InputControl>
+                <InputNumber class="form-control"
+                             min="0"
+                             max="9999"
+                             @bind-Value="_book.Price"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Price"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Pages">
+            <InputControl>
+                <InputNumber class="form-control"
+                             min="0"
+                             max="@(int.MaxValue)"
+                             @bind-Value="_book.Pages"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Pages"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Release Date">
+            <InputControl>
+                <InputDate class="form-control"
+                           min="0001-01-01"
+                           max="@(DateTime.Today.ToString("yyyy-MM-dd"))"
+                           DisplayName="Release Date"
+                           @bind-Value="_book.ReleaseDate"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.ReleaseDate"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <button type="submit" class="btn btn-primary">Update Book</button>
+    </EditForm>
+}
+
+@code {
+
+    [SupplyParameterFromQuery(Name = "id")]
+    private string Isbn13 { get; set; } = string.Empty;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = null!;
+
+    [Inject]
+    private IDbContextFactory<BookStoreDbContext> ContextFactory { get; set; } = null!;
+
+    private Book? _book;
+    private bool _isBusy;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync();
+
+        _book = await context.Books
+            .AsNoTracking()
+            .Include(b => b.Author)
+            .FirstOrDefaultAsync(b => b.Isbn13 == Isbn13);
+
+        if (_book is null)
+            Navigation.NavigateTo("/404");
+    }
+
+    private void SelectAuthor(Author author)
+    {
+        if (_book is null)
+            return;
+
+        _book.Author = author;
+        _book.AuthorId = author.Id;
+    }
+
+    private void RemoveAuthor()
+    {
+        if (_book is null)
+            return;
+
+        _book.Author = null;
+        _book.AuthorId = null;
+    }
+
+    private async Task UpdateBook()
+    {
+        if (_book?.Author is null)
+            return;
+
+        _isBusy = true;
+
+        await using var context = await ContextFactory.CreateDbContextAsync();
+        try
+        {
+            context.Books.Attach(_book);
+            context.Update(_book);
+            
+            await context.SaveChangesAsync();
+
+            _errorMessage = null;
+            Navigation.NavigateTo("/books");
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _errorMessage = $"DbUpdateConcurrencyException, error: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Exception, error: {ex.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+}

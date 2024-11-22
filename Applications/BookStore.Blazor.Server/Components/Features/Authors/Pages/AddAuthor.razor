@@ -1,0 +1,95 @@
+@page "/authors/add"
+@rendermode InteractiveServer
+
+@using BookStore.Persistence.EFCore.Data
+@using BookStore.Persistence.EFCore.Models
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Add Author</PageTitle>
+<h3>Add Author</h3>
+
+@if (_isBusy)
+{
+    <LoadingIndicator/>
+}
+else
+{
+    <EditForm Model="_author"
+              OnValidSubmit="SaveAuthor">
+        
+        <DataAnnotationsValidator/>
+
+        <div class="mb-3">
+            <div class="input-group mb-1">
+                <span style="width: 115px;"
+                      class="input-group-text">
+                    First Name
+                </span>
+                <InputText class="form-control"
+                           placeholder="Jane"
+                           @bind-Value="_author.FirstName"/>
+            </div>
+            <ValidationMessage For="() => _author.FirstName"/>
+        </div>
+
+        <div class="mb-3">
+            <div class="input-group mb-1">
+                <span style="width: 115px;"
+                      class="input-group-text">
+                    Last Name
+                </span>
+                <InputText class="form-control"
+                           placeholder="Doe"
+                           @bind-Value="_author.LastName"/>
+            </div>
+            <ValidationMessage For="() => _author.LastName"/>
+        </div>
+
+        <div class="mb-3">
+            <div class="input-group mb-1">
+                <span style="width: 115px;"
+                      class="input-group-text">
+                    Birth Date
+                </span>
+                <InputDate class="form-control"
+                           min="0001-01-01"
+                           max="@(DateTime.Today.ToString("yyyy-MM-dd"))"
+                           @bind-Value="_author.BirthDate"/>
+            </div>
+            <ValidationMessage For="() => _author.BirthDate"/>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Add Author</button>
+    </EditForm>
+}
+
+@code {
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = null!;
+
+    [Inject]
+    private IDbContextFactory<BookStoreDbContext> ContextFactory { get; set; } = null!;
+
+    private readonly Author _author = new() { BirthDate = DateTime.Today.AddYears(-30) };
+    private bool _isBusy;
+
+    private async Task SaveAuthor()
+    {
+        _isBusy = true;
+
+        try
+        {
+            await using var context = await ContextFactory.CreateDbContextAsync();
+            context.Authors.Add(_author);
+            await context.SaveChangesAsync();
+
+            Navigation.NavigateTo("/authors");
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+}

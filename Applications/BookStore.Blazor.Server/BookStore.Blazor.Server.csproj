@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\Libraries\BookStore.Persistence.EFCore\BookStore.Persistence.EFCore.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <AdditionalFiles Include="Components\Core\Layout\MainLayout.razor" />
+      <AdditionalFiles Include="Components\Core\Layout\NavMenu.razor" />
+      <AdditionalFiles Include="Components\Core\Pages\404.razor" />
+      <AdditionalFiles Include="Components\Core\Pages\Error.razor" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="Components\Pages\404.razor" />
+      <_ContentIncludedByDefault Remove="Components\Pages\Error.razor" />
+      <_ContentIncludedByDefault Remove="Components\Pages\Temp\Counter.razor" />
+      <_ContentIncludedByDefault Remove="Components\Pages\Temp\Home.razor" />
+      <_ContentIncludedByDefault Remove="Components\Pages\Temp\Weather.razor" />
+    </ItemGroup>
+
+</Project>

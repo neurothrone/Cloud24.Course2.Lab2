@@ -1,0 +1,101 @@
+@page "/authors"
+@rendermode InteractiveServer
+
+@using BookStore.Persistence.EFCore.Data
+@using BookStore.Persistence.EFCore.Models
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Authors</PageTitle>
+<h3>Authors</h3>
+
+<a href="/authors/add"
+   class="btn btn-primary mb-3">
+    Add Author
+</a>
+
+@if (_isBusy || _authors is null)
+{
+    <LoadingIndicator/>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Birth Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var author in _authors)
+            {
+                <tr @key="author.Id">
+                    <td>@author.Id</td>
+                    <td>@author.FirstName</td>
+                    <td>@author.LastName</td>
+                    <td>@author.BirthDate.ToShortDateString()</td>
+                    <td>
+                        <a href=@($"/authors/edit?id={author.Id}")
+                           class="btn btn-warning">
+                            Edit
+                        </a>
+                        <button type="button"
+                                class="btn btn-danger"
+                                @onclick="() => DeleteAuthor(author)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    [Inject]
+    private IDbContextFactory<BookStoreDbContext> ContextFactory { get; set; } = null!;
+
+    private List<Author>? _authors;
+    private bool _isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isBusy = true;
+
+        await using var context = await ContextFactory.CreateDbContextAsync();
+        _authors = await context.Authors
+            .AsNoTracking()
+            .OrderBy(a => a.FirstName)
+            .ToListAsync();
+
+        _isBusy = false;
+    }
+
+    private async Task DeleteAuthor(Author author)
+    {
+        if (_authors is null)
+            return;
+
+        _isBusy = true;
+
+        try
+        {
+            await using var context = await ContextFactory.CreateDbContextAsync();
+
+            context.Authors.Attach(author);
+            context.Authors.Remove(author);
+            await context.SaveChangesAsync();
+
+            _authors.Remove(author);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+}

@@ -1,0 +1,158 @@
+@page "/stores/edit"
+@rendermode InteractiveServer
+
+@using BookStore.Blazor.Server.Components.Features.Stores.Controls
+@using BookStore.Persistence.EFCore.Data
+@using BookStore.Persistence.EFCore.Models
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Edit Store</PageTitle>
+<h3>Edit Store</h3>
+
+@if (_isBusy || _store is null)
+{
+    <LoadingIndicator/>
+}
+else if (_store is not null)
+{
+    <StoreInfo class="mt-3"
+               Store="_store"/>
+
+    <h3>Books</h3>
+
+    <SearchInput Placeholder="Search for books by ISBN13, title or author"
+                 OnSearched="SearchBooks"/>
+
+    @if (_books.Count > 0)
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ISBN13</th>
+                    <th>Title</th>
+                    <th>Language</th>
+                    <th>Price</th>
+                    <th>Pages</th>
+                    <th>Birth Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var book in _books)
+                {
+                    <tr @key="book.Isbn13">
+                        <td>@book.Isbn13</td>
+                        <td>@book.Title</td>
+                        <td>@book.Language</td>
+                        <td>@book.Price</td>
+                        <td>@book.Pages</td>
+                        <td>@book.ReleaseDate.ToShortDateString()</td>
+                        <td>
+                            <button type="button"
+                                    class="btn btn-primary"
+                                    @onclick="() => AddBook(book)">
+                                Add Book
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+
+    [SupplyParameterFromQuery(Name = "id")]
+    private int StoreId { get; set; }
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = null!;
+
+    [Inject]
+    private IDbContextFactory<BookStoreDbContext> ContextFactory { get; set; } = null!;
+
+    private Store? _store;
+    private List<Book> _books = [];
+    private bool _isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isBusy = true;
+
+        try
+        {
+            await using var context = await ContextFactory.CreateDbContextAsync();
+            _store = await context.Stores
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == StoreId);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+
+        if (_store is null)
+            Navigation.NavigateTo("/404");
+    }
+
+    private async Task SearchBooks(string searchText)
+    {
+        if (_store is null)
+            return;
+
+        var searchPattern = string.IsNullOrWhiteSpace(searchText) ? string.Empty : $"%{searchText.Trim()}%";
+
+        await using var context = await ContextFactory.CreateDbContextAsync();
+
+        _books = await context.Books
+            .GroupJoin(
+                // !: NOTE -> Join Books with InventoryBalances where the StoreId matches the given _store.Id.
+                context.InventoryBalances
+                    .Where(ib => ib.StoreId == _store.Id),
+                // !: NOTE -> Joining by ISBN13 between Book and InventoryBalance.
+                book => book.Isbn13,
+                // !: NOTE -> Joining InventoryBalance by Book's ISBN13.
+                inventoryBalance => inventoryBalance.Book.Isbn13,
+                // !: NOTE -> Combine results into a new object (Anonymous Type) with Book and InventoryBalances.
+                (book, inventoryBalances) => new { book, inventoryBalances }
+            )
+            // !: NOTE -> Filter out books that already exist in the store.
+            .Where(joined => !joined.inventoryBalances.Any())
+            // !: NOTE -> Select the Book object from the joined result.
+            .Select(joined => joined.book)
+            // !: NOTE -> Include Author details for each book in the result.
+            .Include(b => b.Author)
+            .Where(b =>
+                // !: NOTE -> Filter books based on search pattern matching ISBN13, Title, or Author's Name.
+                EF.Functions.Like(b.Isbn13, searchPattern) ||
+                EF.Functions.Like(b.Title, searchPattern) ||
+                (b.Author != null &&
+                 (EF.Functions.Like(b.Author.FirstName + " " + b.Author.LastName, searchPattern) ||
+                  EF.Functions.Like(b.Author.LastName + " " + b.Author.FirstName, searchPattern)))
+            )
+            .ToListAsync();
+    }
+
+    private async Task AddBook(Book book)
+    {
+        if (_store is null)
+            return;
+
+        await using var context = await ContextFactory.CreateDbContextAsync();
+        context.Stores.Attach(_store);
+        context.Books.Attach(book);
+
+        context.InventoryBalances.Add(new InventoryBalance
+        {
+            Store = _store,
+            Book = book,
+            Quantity = 1
+        });
+
+        await context.SaveChangesAsync();
+
+        _books.Remove(book);
+    }
+
+}

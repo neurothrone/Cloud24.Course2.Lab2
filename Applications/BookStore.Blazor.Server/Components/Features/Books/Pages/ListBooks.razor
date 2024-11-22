@@ -1,0 +1,105 @@
+@page "/books"
+@rendermode InteractiveServer
+
+@using BookStore.Persistence.EFCore.Data
+@using BookStore.Persistence.EFCore.Models
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Books</PageTitle>
+<h3>Books</h3>
+
+<a href="/books/add"
+   class="btn btn-primary mb-3">
+    Add Book
+</a>
+
+@if (_isBusy || _books == null)
+{
+    <LoadingIndicator/>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ISBN13</th>
+                <th>Title</th>
+                <th>Language</th>
+                <th>Price</th>
+                <th>Pages</th>
+                <th>Birth Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in _books)
+            {
+                <tr @key="book.Isbn13">
+                    <td>@book.Isbn13</td>
+                    <td>@book.Title</td>
+                    <td>@book.Language</td>
+                    <td>@book.Price</td>
+                    <td>@book.Pages</td>
+                    <td>@book.ReleaseDate.ToShortDateString()</td>
+                    <td>
+                        <a href=@($"/books/edit?id={book.Isbn13}")
+                           class="btn btn-warning">
+                            Edit
+                        </a>
+                        <button type="button"
+                                class="btn btn-danger"
+                                @onclick="() => DeleteBook(book)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    [Inject]
+    private IDbContextFactory<BookStoreDbContext> ContextFactory { get; set; } = null!;
+
+    private List<Book>? _books;
+    private bool _isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isBusy = true;
+
+        await using var context = await ContextFactory.CreateDbContextAsync();
+        _books = await context.Books
+            .AsNoTracking()
+            .OrderBy(b => b.Title)
+            .ToListAsync();
+
+        _isBusy = false;
+    }
+
+    private async Task DeleteBook(Book book)
+    {
+        if (_books is null)
+            return;
+
+        _isBusy = true;
+
+        try
+        {
+            await using var context = await ContextFactory.CreateDbContextAsync();
+            
+            context.Books.Attach(book);
+            context.Books.Remove(book);
+            await context.SaveChangesAsync();
+
+            _books.Remove(book);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+}

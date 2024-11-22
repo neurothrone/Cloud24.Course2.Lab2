@@ -1,0 +1,113 @@
+@page "/inventories/edit"
+@rendermode InteractiveServer
+
+@using BookStore.Blazor.Server.Components.Features.Inventory.Controls
+@using BookStore.Persistence.EFCore.Data
+@using BookStore.Persistence.EFCore.Models
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Edit Book in Inventory</PageTitle>
+<h3>Edit Book in Inventory</h3>
+
+@if (_isBusy || _inventoryBalance is null)
+{
+    <LoadingIndicator/>
+}
+else if (_inventoryBalance is not null && _book is not null)
+{
+    <BookInfo class="mt-3"
+              Book="_book"/>
+
+    <EditForm Model="_inventoryBalance"
+              OnValidSubmit="SaveChanges">
+
+        <DataAnnotationsValidator/>
+
+        <InputGroup class="mb-3"
+                    Label="Quantity">
+            <InputControl>
+                <InputNumber class="form-control"
+                             min="0"
+                             max="@(int.MaxValue)"
+                             @bind-Value="_inventoryBalance.Quantity"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _inventoryBalance.Quantity"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <button type="submit"
+                class="btn btn-primary">
+            Save
+        </button>
+    </EditForm>
+}
+
+@code {
+
+    [SupplyParameterFromQuery(Name = "storeId")]
+    private int StoreId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "isbn13")]
+    private string Isbn13 { get; set; } = string.Empty;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = null!;
+
+    [Inject]
+    private IDbContextFactory<BookStoreDbContext> ContextFactory { get; set; } = null!;
+
+    private InventoryBalance? _inventoryBalance;
+    private Book? _book;
+    private bool _isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isBusy = true;
+
+        try
+        {
+            await using var context = await ContextFactory.CreateDbContextAsync();
+
+            _inventoryBalance = await context.InventoryBalances
+                .Include(ib => ib.Book)
+                .ThenInclude(b => b.Author)
+                .FirstOrDefaultAsync(ib => ib.StoreId == StoreId && ib.Isbn13 == Isbn13);
+
+            if (_inventoryBalance is null)
+            {
+                Navigation.NavigateTo("/404");
+                return;
+            }
+
+            _book = _inventoryBalance.Book;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (_inventoryBalance is null)
+            return;
+
+        _isBusy = false;
+
+        try
+        {
+            await using var context = await ContextFactory.CreateDbContextAsync();
+
+            context.Update(_inventoryBalance);
+            await context.SaveChangesAsync();
+
+            Navigation.NavigateTo($"/stores/details?id={StoreId}");
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+}

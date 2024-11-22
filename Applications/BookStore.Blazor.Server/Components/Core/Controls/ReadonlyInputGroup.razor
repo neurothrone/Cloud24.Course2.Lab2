@@ -1,0 +1,22 @@
+<div @attributes="AdditionalAttributes">
+    <div class="input-group">
+        <span class="input-group-text">
+            @Label
+        </span>
+
+        <ReadonlyInput Value="@Value"/>
+    </div>
+</div>
+
+@code {
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Value { get; set; } = string.Empty;
+
+}

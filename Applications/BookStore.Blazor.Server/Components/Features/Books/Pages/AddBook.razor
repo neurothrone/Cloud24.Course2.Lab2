@@ -1,0 +1,251 @@
+@page "/books/add"
+@rendermode InteractiveServer
+
+@using BookStore.Persistence.EFCore.Data
+@using BookStore.Persistence.EFCore.Models
+@using BookStore.Blazor.Server.Components.Features.Books.Controls
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Add Book</PageTitle>
+<h3>Add Book</h3>
+
+@if (_isBusy || _stores is null)
+{
+    <LoadingIndicator/>
+}
+else
+{
+    <EditForm Model="_book"
+              OnValidSubmit="SaveBook">
+
+        <DataAnnotationsValidator/>
+
+        @if (_selectedStoreId is not null && _stores.Length > 0)
+        {
+            <InputGroup class="mb-3"
+                        Label="Store">
+                <InputControl>
+                    <InputSelect class="form-select"
+                                 @bind-Value="_selectedStoreId">
+                        <option value="0" disabled>Select a Store</option>
+                        @foreach (var store in _stores)
+                        {
+                            <option checked="@(store.Id == _selectedStoreId)"
+                                    value="@store.Id">
+                                @store.Name
+                            </option>
+                        }
+                    </InputSelect>
+                </InputControl>
+                <ValidationControl>
+                </ValidationControl>
+            </InputGroup>
+        }
+
+        <InputGroup class="mb-3"
+                    Label="ISBN13">
+            <InputControl>
+                <InputText class="form-control"
+                           placeholder="XXX-X-XXX-XXXXX"
+                           @bind-Value="_book.Isbn13"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Isbn13"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Title">
+            <InputControl>
+                <InputText class="form-control"
+                           placeholder="Brave New World"
+                           @bind-Value="_book.Title"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Title"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Author">
+            <InputControl>
+                @if (_book.Author is null)
+                {
+                    <SearchAuthorList SelectedAuthor="_book.Author"
+                                      OnAuthorSelected="SelectAuthor"/>
+                }
+                else
+                {
+                    <ReadonlyInput Value="@_book.Author.FullName"/>
+                    <button type="button"
+                            class="btn btn-outline-danger"
+                            @onclick="RemoveAuthor">
+                        Clear
+                    </button>
+                }
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Author"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Language">
+            <InputControl>
+                <InputText class="form-control"
+                           placeholder="English"
+                           @bind-Value="_book.Language"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Language"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Price">
+            <InputControl>
+                <InputNumber class="form-control"
+                             min="0"
+                             max="9999"
+                             @bind-Value="_book.Price"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Price"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Pages">
+            <InputControl>
+                <InputNumber class="form-control"
+                             min="0"
+                             max="@(int.MaxValue)"
+                             @bind-Value="_book.Pages"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.Pages"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <InputGroup class="mb-3"
+                    Label="Release Date">
+            <InputControl>
+                <InputDate class="form-control"
+                           min="0001-01-01"
+                           max="@(DateTime.Today.ToString("yyyy-MM-dd"))"
+                           DisplayName="Release Date"
+                           @bind-Value="_book.ReleaseDate"/>
+            </InputControl>
+            <ValidationControl>
+                <ValidationMessage For="() => _book.ReleaseDate"/>
+            </ValidationControl>
+        </InputGroup>
+
+        <button type="submit" class="btn btn-primary">Add Book</button>
+    </EditForm>
+}
+
+@code {
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = null!;
+
+    [Inject]
+    private IDbContextFactory<BookStoreDbContext> ContextFactory { get; set; } = null!;
+
+    private readonly Book _book = new() { ReleaseDate = DateTime.Today.AddYears(-30) };
+    private Store[]? _stores;
+    private int? _selectedStoreId;
+    private bool _isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync();
+        _stores = await context.Stores
+            .AsNoTracking()
+            .OrderBy(s => s.Name)
+            .ToArrayAsync();
+        _selectedStoreId = _stores.FirstOrDefault()?.Id ?? 0;
+    }
+
+    private void SelectAuthor(Author author)
+    {
+        _book.Author = author;
+        _book.AuthorId = author.Id;
+    }
+
+    private void RemoveAuthor()
+    {
+        _book.Author = null;
+        _book.AuthorId = null;
+    }
+
+    private async Task SaveBook()
+    {
+        if (_book.Author is null)
+            return;
+
+        var selectedStore = _stores.FirstOrDefault(s => s.Id == _selectedStoreId);
+        if (selectedStore is null)
+            return;
+
+        _isBusy = true;
+
+        try
+        {
+            await using var context = await ContextFactory.CreateDbContextAsync();
+
+            // TODO: Check ISBN
+            // Normalize the ISBN13 before performing the check (remove hyphens)
+            // var normalizedIsbn13 = NormalizeIsbn13(_book.Isbn13);
+            //
+            // // Check if the ISBN13 already exists in the database
+            // var existingBook = await context.Books
+            //     .Where(b => NormalizeIsbn13(b.Isbn13) == normalizedIsbn13 || b.Isbn13 == _book.Isbn13 || b.Isbn13 == AddHyphensToIsbn13(normalizedIsbn13))
+            //     .FirstOrDefaultAsync();
+            //
+            // if (existingBook != null)
+            // {
+            //     // Handle the error: ISBN13 already exists
+            //     Console.WriteLine("Error: The ISBN13 already exists.");
+            //     return; // Or throw an exception, etc.
+            // }
+
+            // !: NOTE: Attach the Author and Store because they were retrieved with AsNoTracking. Without
+            //          attaching, EF will try to insert them as new entities, causing a unique constraint error.
+            context.Authors.Attach(_book.Author);
+            context.Stores.Attach(selectedStore);
+
+            context.Books.Add(_book);
+            context.InventoryBalances.Add(new InventoryBalance
+            {
+                Store = selectedStore,
+                Book = _book,
+                Quantity = 1
+            });
+
+            await context.SaveChangesAsync();
+
+            Navigation.NavigateTo("/books");
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private static string NormalizeIsbn13(string isbn)
+    {
+        // Remove hyphens from ISBN13
+        return isbn.Replace("-", string.Empty);
+    }
+
+    private static string AddHyphensToIsbn13(string isbn)
+    {
+        // Add hyphens to ISBN13, assuming the format is valid (i.e., 13 digits)
+        if (isbn.Length == 13)
+            return isbn.Insert(3, "-").Insert(5, "-").Insert(9, "-").Insert(15, "-");
+        return isbn; // Return the original if not a valid length
+    }
+
+}

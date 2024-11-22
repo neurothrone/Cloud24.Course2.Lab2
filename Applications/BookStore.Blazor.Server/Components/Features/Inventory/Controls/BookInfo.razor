@@ -1,0 +1,26 @@
+@using BookStore.Persistence.EFCore.Models
+
+@if (Book is not null)
+{
+    <section @attributes="AdditionalAttributes">
+        <ReadonlyInputGroup class="mb-3"
+                            Label="Title"
+                            Value="@Book.Title"/>
+        @if (Book.Author is not null)
+        {
+            <ReadonlyInputGroup class="mb-3"
+                                Label="Author"
+                                Value="@Book.Author.FullName"/>
+        }
+    </section>
+}
+
+@code {
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    [Parameter, EditorRequired]
+    public Book? Book { get; set; }
+
+}

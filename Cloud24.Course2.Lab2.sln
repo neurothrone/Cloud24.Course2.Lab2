@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{C4B24529-EA95-41F9-975E-390582984481}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Applications", "Applications", "{90545895-6E76-4106-948E-CE83F33A2471}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libraries", "Libraries", "{416F55A9-E4CE-4639-8BAC-D823042E068D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookStore.Blazor.Server", "Applications\BookStore.Blazor.Server\BookStore.Blazor.Server.csproj", "{B1B1B655-2E9E-4FA3-863D-914313325748}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookStore.Persistence.EFCore", "Libraries\BookStore.Persistence.EFCore\BookStore.Persistence.EFCore.csproj", "{DC55F34C-46FF-43CC-9137-13A0FD21C4E2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{90545895-6E76-4106-948E-CE83F33A2471} = {C4B24529-EA95-41F9-975E-390582984481}
+		{416F55A9-E4CE-4639-8BAC-D823042E068D} = {C4B24529-EA95-41F9-975E-390582984481}
+		{B1B1B655-2E9E-4FA3-863D-914313325748} = {90545895-6E76-4106-948E-CE83F33A2471}
+		{DC55F34C-46FF-43CC-9137-13A0FD21C4E2} = {416F55A9-E4CE-4639-8BAC-D823042E068D}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B1B1B655-2E9E-4FA3-863D-914313325748}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1B1B655-2E9E-4FA3-863D-914313325748}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1B1B655-2E9E-4FA3-863D-914313325748}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1B1B655-2E9E-4FA3-863D-914313325748}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC55F34C-46FF-43CC-9137-13A0FD21C4E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC55F34C-46FF-43CC-9137-13A0FD21C4E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC55F34C-46FF-43CC-9137-13A0FD21C4E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC55F34C-46FF-43CC-9137-13A0FD21C4E2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

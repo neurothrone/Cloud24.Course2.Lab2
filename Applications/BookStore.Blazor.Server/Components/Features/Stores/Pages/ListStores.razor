@@ -1,0 +1,66 @@
+@page "/"
+@page "/stores"
+@rendermode InteractiveServer
+
+@using BookStore.Persistence.EFCore.Data
+@using BookStore.Persistence.EFCore.Models
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Stores</PageTitle>
+<h3>Stores</h3>
+
+@if (_isBusy || _stores == null)
+{
+    <LoadingIndicator/>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Address</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var store in _stores)
+            {
+                <tr @key="store.Id">
+                    <td>@store.Id</td>
+                    <td>@store.Name</td>
+                    <td>@store.Address</td>
+                    <td>
+                        <a href=@($"/stores/details?id={store.Id}")
+                           class="btn btn-primary">
+                            Details
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    [Inject]
+    private IDbContextFactory<BookStoreDbContext> ContextFactory { get; set; } = null!;
+
+    private List<Store>? _stores;
+    private bool _isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isBusy = true;
+
+        await using var context = await ContextFactory.CreateDbContextAsync();
+        _stores = await context.Stores
+            .AsNoTracking()
+            .ToListAsync();
+
+        _isBusy = false;
+    }
+
+}

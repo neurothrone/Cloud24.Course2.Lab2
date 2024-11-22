@@ -1,0 +1,110 @@
+@using BookStore.Persistence.EFCore.Data
+@using BookStore.Persistence.EFCore.Models
+@using Microsoft.EntityFrameworkCore
+
+@if (_isBusy || _books is null)
+{
+    <LoadingIndicator/>
+}
+else if (_books is not null)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ISBN13</th>
+                <th>Title</th>
+                <th>Language</th>
+                <th>Price</th>
+                <th>Pages</th>
+                <th>Birth Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in _books)
+            {
+                <tr>
+                    <td>@book.Isbn13</td>
+                    <td>@book.Title</td>
+                    <td>@book.Language</td>
+                    <td>@book.Price</td>
+                    <td>@book.Pages</td>
+                    <td>@book.ReleaseDate.ToShortDateString()</td>
+                    <td>
+                        <a href=@($"/inventories/edit?storeId={Store.Id}&isbn13={book.Isbn13}")
+                           class="btn btn-warning">
+                            Edit
+                        </a>
+                        <button type="button"
+                                class="btn btn-danger"
+                                @onclick="() => RemoveBookFromInventory(book)">
+                            Remove
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    [Parameter, EditorRequired]
+    public Store Store { get; set; } = null!;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = null!;
+
+    [Inject]
+    private IDbContextFactory<BookStoreDbContext> ContextFactory { get; set; } = null!;
+
+    private List<Book>? _books;
+    private bool _isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isBusy = true;
+
+        try
+        {
+            await using var context = await ContextFactory.CreateDbContextAsync();
+
+            // !: Approach 1 -> Without navigation properties.
+            // _books = await context.InventoryBalances
+            //     .Where(ib => ib.StoreId == Store.Id)
+            //     .Join(context.Books,
+            //         ib => ib.Isbn13,
+            //         b => b.Isbn13,
+            //         (ib, b) => b)
+            //     .ToListAsync();
+
+            // !: Approach 2 -> Using navigation properties.
+            _books = await context.InventoryBalances
+                .Where(ib => ib.StoreId == Store.Id)
+                .Include(ib => ib.Book)
+                .Select(ib => ib.Book)
+                .ToListAsync();
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task RemoveBookFromInventory(Book book)
+    {
+        if (_books is null)
+            return;
+
+        await using var context = await ContextFactory.CreateDbContextAsync();
+
+        var inventoryBalance = await context.InventoryBalances.FirstOrDefaultAsync(ib => ib.Isbn13 == book.Isbn13);
+        if (inventoryBalance is null)
+            return;
+
+        context.InventoryBalances.Remove(inventoryBalance);
+        await context.SaveChangesAsync();
+        _books.Remove(book);
+    }
+
+}

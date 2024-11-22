@@ -1,0 +1,32 @@
+<div @attributes="AdditionalAttributes">
+    <div class="input-group @(ValidationControl is not null ? "mb-1" : string.Empty)">
+        <span class="input-group-text">
+            @Label
+        </span>
+
+        @if (InputControl is not null)
+        {
+            @InputControl
+        }
+    </div>
+    @if (ValidationControl is not null)
+    {
+        @ValidationControl
+    }
+</div>
+
+@code {
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public RenderFragment? InputControl { get; set; }
+
+    [Parameter, EditorRequired]
+    public RenderFragment? ValidationControl { get; set; }
+
+}
